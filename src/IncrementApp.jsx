@@ -650,15 +650,196 @@ const IncrementApp = () => {
               </ResponsiveContainer>
             </div>
 
-            <div className={`p-4 rounded-xl border ${
-              activeModel === 'mmm' 
-                ? 'bg-blue-50 border-blue-200' 
+            {/* Contribution Breakdown */}
+            {filteredMmmData && filteredAttributionData && (() => {
+              // Build all rows: baseline + channels + unattributed
+              const allKeys = ['baseline', ...channels, 'unattributed'];
+              const mmmGrandTotal = allKeys.reduce((sum, key) => {
+                return sum + (filteredMmmData?.reduce((s, d) => s + (parseFloat(d[key]) || 0), 0) || 0);
+              }, 0);
+              const attrChannelTotal = channels.reduce((sum, ch) => {
+                return sum + (filteredAttributionData?.reduce((s, d) => s + (parseFloat(d[ch]) || 0), 0) || 0);
+              }, 0);
+
+              const rows = allKeys.map((key, index) => {
+                const mmmVal = filteredMmmData?.reduce((sum, d) => sum + (parseFloat(d[key]) || 0), 0) || 0;
+                const attrVal = filteredAttributionData?.reduce((sum, d) => sum + (parseFloat(d[key]) || 0), 0) || 0;
+                const mmmPct = mmmGrandTotal > 0 ? (mmmVal / mmmGrandTotal) * 100 : 0;
+                const attrPct = attrChannelTotal > 0 ? (attrVal / attrChannelTotal) * 100 : 0;
+                const isBaseline = key === 'baseline';
+                const isUnattributed = key === 'unattributed';
+                const isNonPerformance = ['Youtube', 'Fta Tv', 'Bvod', 'SVOD', 'TV'].includes(key);
+                const attrCredits = attrVal > 0 && !isBaseline && !isUnattributed;
+
+                let color;
+                if (isBaseline) color = '#000000';
+                else if (isUnattributed) color = '#0066FF';
+                else color = mmmColors.marketing[channels.indexOf(key) % mmmColors.marketing.length];
+
+                return {
+                  key,
+                  label: isBaseline ? 'Baseline / Organic' : isUnattributed ? 'Unattributed' : key,
+                  mmmVal,
+                  attrVal,
+                  mmmPct,
+                  attrPct,
+                  attrCredits,
+                  isBaseline,
+                  isUnattributed,
+                  isNonPerformance,
+                  color,
+                };
+              });
+
+              // Sort by MMM contribution descending
+              rows.sort((a, b) => b.mmmVal - a.mmmVal);
+
+              const maxPct = Math.max(...rows.map(r => Math.max(r.mmmPct, r.attrPct)), 1);
+
+              return (
+                <div className="bg-white border border-gray-200 rounded-xl p-6 mt-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">Channel Contribution Breakdown</h2>
+                      <p className="text-sm text-gray-500 mt-1">MMM vs Attribution — share of total sales by driver</p>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded-sm bg-blue-500" />
+                        <span className="text-gray-600 font-medium">MMM</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded-sm bg-pink-500" />
+                        <span className="text-gray-600 font-medium">Attribution</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-3 rounded-sm bg-gray-100 border border-dashed border-gray-300" />
+                        <span className="text-gray-400 font-medium">Not credited</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {rows.map((row) => (
+                      <div key={row.key} className="group">
+                        <div className="flex items-center gap-4">
+                          {/* Channel label */}
+                          <div className="w-40 flex-shrink-0 flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: row.color }} />
+                            <span className="text-sm font-medium text-gray-800 truncate">{row.label}</span>
+                          </div>
+
+                          {/* Bars */}
+                          <div className="flex-1 space-y-1">
+                            {/* MMM bar */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-medium text-gray-400 w-8 text-right">MMM</span>
+                              <div className="flex-1 h-5 bg-gray-50 rounded overflow-hidden">
+                                <div
+                                  className="h-full bg-blue-500 rounded transition-all duration-500"
+                                  style={{ width: `${(row.mmmPct / maxPct) * 100}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-semibold text-gray-700 w-14 text-right">
+                                {row.mmmPct.toFixed(1)}%
+                              </span>
+                              <span className="text-xs text-gray-400 w-16 text-right">
+                                {row.mmmVal >= 1000 ? `${(row.mmmVal / 1000).toFixed(1)}k` : row.mmmVal.toFixed(0)}
+                              </span>
+                            </div>
+                            {/* Attribution bar */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-medium text-gray-400 w-8 text-right">Attr</span>
+                              {row.attrCredits ? (
+                                <>
+                                  <div className="flex-1 h-5 bg-gray-50 rounded overflow-hidden">
+                                    <div
+                                      className="h-full bg-pink-500 rounded transition-all duration-500"
+                                      style={{ width: `${(row.attrPct / maxPct) * 100}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-xs font-semibold text-gray-700 w-14 text-right">
+                                    {row.attrPct.toFixed(1)}%
+                                  </span>
+                                  <span className="text-xs text-gray-400 w-16 text-right">
+                                    {row.attrVal >= 1000 ? `${(row.attrVal / 1000).toFixed(1)}k` : row.attrVal.toFixed(0)}
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="flex-1 h-5 bg-gray-50 rounded overflow-hidden border border-dashed border-gray-200">
+                                    <div className="h-full flex items-center px-3">
+                                      <span className="text-[10px] text-gray-400 font-medium">
+                                        {row.isBaseline ? 'Not modeled — Attribution ignores baseline / organic sales'
+                                          : row.isUnattributed ? 'Not modeled — Attribution ignores unattributed drivers'
+                                          : row.isNonPerformance ? 'Not modeled — Attribution cannot measure this channel'
+                                          : 'No credit given'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <span className="text-xs font-semibold text-gray-300 w-14 text-right">—</span>
+                                  <span className="text-xs text-gray-300 w-16 text-right">—</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Totals */}
+                  <div className="mt-6 pt-4 border-t-2 border-gray-200">
+                    <div className="flex items-center gap-4">
+                      <div className="w-40 flex-shrink-0">
+                        <span className="text-sm font-bold text-gray-900">Total</span>
+                      </div>
+                      <div className="flex-1 grid grid-cols-2 gap-4">
+                        <div className="bg-blue-50 rounded-lg p-3 flex items-center justify-between">
+                          <span className="text-sm font-semibold text-blue-900">MMM</span>
+                          <span className="text-sm font-bold text-blue-900">
+                            {mmmGrandTotal >= 1000 ? `${(mmmGrandTotal / 1000).toFixed(1)}k` : mmmGrandTotal.toFixed(0)}
+                          </span>
+                        </div>
+                        <div className="bg-pink-50 rounded-lg p-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-pink-900">Attribution</span>
+                            <span className="text-xs text-orange-600 font-medium">
+                              ({attrChannelTotal > mmmGrandTotal ? '+' : ''}{(((attrChannelTotal - mmmGrandTotal) / mmmGrandTotal) * 100).toFixed(0)}% vs MMM)
+                            </span>
+                          </div>
+                          <span className="text-sm font-bold text-pink-900">
+                            {attrChannelTotal >= 1000 ? `${(attrChannelTotal / 1000).toFixed(1)}k` : attrChannelTotal.toFixed(0)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Insight callout */}
+                  <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <p className="text-sm text-orange-900">
+                      <span className="font-semibold">Key insight:</span> Attribution only credits {rows.filter(r => r.attrCredits).length} of {rows.length} sales drivers.
+                      {' '}It ignores baseline demand, brand effects, and offline channels — which MMM shows account for{' '}
+                      <span className="font-semibold">
+                        {(rows.filter(r => !r.attrCredits).reduce((s, r) => s + r.mmmPct, 0)).toFixed(0)}%
+                      </span>
+                      {' '}of total sales. This means attribution over-credits the channels it does measure.
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className={`p-4 rounded-xl border mt-6 ${
+              activeModel === 'mmm'
+                ? 'bg-blue-50 border-blue-200'
                 : 'bg-orange-50 border-orange-200'
             }`}>
               <p className={`text-sm font-medium ${
                 activeModel === 'mmm' ? 'text-blue-900' : 'text-orange-900'
               }`}>
-                {activeModel === 'mmm' 
+                {activeModel === 'mmm'
                   ? '📊 MMM View: Shows true incremental contribution from each marketing channel above baseline. Click any channel in the legend to isolate it.'
                   : '⚠️ Attribution View: Shows only performance marketing channels. Click any channel in the legend to isolate it.'
                 }
