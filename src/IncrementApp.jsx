@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { ArrowRight, Upload, TrendingUp } from 'lucide-react';
+import { ArrowRight, Upload, TrendingUp, Download } from 'lucide-react';
 
 // Increment Logo Component
 const IncrementLogo = ({ size = 'default' }) => {
@@ -33,6 +33,7 @@ const IncrementApp = () => {
   const [mmmData, setMmmData] = useState(null);
   const [attributionData, setAttributionData] = useState(null);
   const [spendData, setSpendData] = useState(null);
+  const [comparisonMetric, setComparisonMetric] = useState('volume');
 
   // Parse CSV helper
   const parseCSV = (text) => {
@@ -735,107 +736,307 @@ const IncrementApp = () => {
           </div>
         ) : (
           <>
-            <div className="space-y-6">
-              <div className="grid grid-cols-3 gap-6">
-                <div className="bg-gradient-to-br from-orange-50 to-red-50 border border-orange-200 rounded-xl p-6">
-                  <div className="text-sm font-medium text-orange-900 mb-2">Total Variance</div>
-                  <div className="text-3xl font-bold text-orange-900 mb-1">
-                    ${(channels.reduce((sum, ch) => {
-                      const mmmTotal = filteredMmmData?.reduce((s, d) => s + (d[ch] || 0), 0) || 0;
-                      const attrTotal = filteredAttributionData?.reduce((s, d) => s + (d[ch] || 0), 0) || 0;
-                      return sum + (attrTotal - mmmTotal);
-                    }, 0) / 1000).toFixed(0)}k
-                  </div>
-                  <div className="text-sm text-orange-700">attributed beyond MMM</div>
-                </div>
-
-                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-6">
-                  <div className="text-sm font-medium text-blue-900 mb-2">MMM Total</div>
-                  <div className="text-3xl font-bold text-blue-900 mb-1">
-                    ${(channels.reduce((sum, ch) => {
-                      return sum + (filteredMmmData?.reduce((s, d) => s + (d[ch] || 0), 0) || 0);
-                    }, 0) / 1000).toFixed(0)}k
-                  </div>
-                  <div className="text-sm text-blue-700">true incremental lift</div>
-                </div>
-
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-6">
-                  <div className="text-sm font-medium text-purple-900 mb-2">Attribution Total</div>
-                  <div className="text-3xl font-bold text-purple-900 mb-1">
-                    ${(channels.reduce((sum, ch) => {
-                      return sum + (filteredAttributionData?.reduce((s, d) => s + (d[ch] || 0), 0) || 0);
-                    }, 0) / 1000).toFixed(0)}k
-                  </div>
-                  <div className="text-sm text-purple-700">attributed conversions</div>
-                </div>
-              </div>
-
-              <div className="bg-white border border-gray-200 rounded-xl p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-6">Channel-by-Channel Comparison</h2>
-                
-                <div className="space-y-6">
-                  {channels.map((channel, index) => {
-                    const mmmTotal = filteredMmmData?.reduce((sum, d) => sum + (d[channel] || 0), 0) || 0;
-                    const attrTotal = filteredAttributionData?.reduce((sum, d) => sum + (d[channel] || 0), 0) || 0;
-                    const variance = attrTotal - mmmTotal;
-                    const variancePct = mmmTotal > 0 ? ((attrTotal - mmmTotal) / mmmTotal * 100) : 0;
-                    const maxValue = Math.max(mmmTotal, attrTotal);
-                    
-                    return (
-                      <div key={channel} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-900">{channel}</span>
-                          <div className="flex items-center gap-4 text-xs">
-                            <span className="text-gray-500">MMM: ${(mmmTotal / 1000).toFixed(1)}k</span>
-                            <span className="text-gray-500">Attr: ${(attrTotal / 1000).toFixed(1)}k</span>
-                            <span className={`font-semibold ${
-                              variance > 0 ? 'text-orange-600' : 'text-green-600'
-                            }`}>
-                              {variance > 0 ? '+' : ''}{(variance / 1000).toFixed(1)}k ({variancePct > 0 ? '+' : ''}{variancePct.toFixed(0)}%)
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <div className="relative h-8 bg-gray-100 rounded-lg overflow-hidden">
-                          <div 
-                            className="absolute top-0 left-0 h-full bg-blue-500 rounded-lg"
-                            style={{ width: `${(mmmTotal / maxValue * 100)}%` }}
-                          />
-                          <div 
-                            className="absolute top-0 left-0 h-full bg-pink-500 opacity-60 rounded-lg"
-                            style={{ width: `${(attrTotal / maxValue * 100)}%` }}
-                          />
-                          {variance > 0 && (
-                            <div 
-                              className="absolute top-0 h-full bg-orange-400 border-l-2 border-orange-600"
-                              style={{ 
-                                left: `${(mmmTotal / maxValue * 100)}%`,
-                                width: `${(variance / maxValue * 100)}%`
-                              }}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex items-center justify-center gap-6 mt-8 pt-6 border-t border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-blue-500" />
-                    <span className="text-sm text-gray-700">MMM (True Lift)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-pink-500 opacity-60" />
-                    <span className="text-sm text-gray-700">Attribution</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-orange-400" />
-                    <span className="text-sm text-gray-700">Over-Attribution</span>
-                  </div>
-                </div>
+            {/* Metric sub-toggle */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center bg-white border border-gray-300 rounded-lg overflow-hidden">
+                {[
+                  { key: 'volume', label: 'Volume' },
+                  { key: 'cpa', label: 'CPA' },
+                  { key: 'roi', label: 'ROI' },
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setComparisonMetric(key)}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                      comparisonMetric === key
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
+
+            {(() => {
+              // Build comparison data for all channels
+              const comparisonData = channels
+                .map((channel) => {
+                  const channelKey = spendData?.[channel] ? channel : spendData ? Object.keys(spendData).find(k => k.toLowerCase() === channel.toLowerCase()) : null;
+                  const mmmTotal = filteredMmmData?.reduce((sum, d) => sum + (parseFloat(d[channel]) || 0), 0) || 0;
+                  const attrTotal = filteredAttributionData?.reduce((sum, d) => sum + (parseFloat(d[channel]) || 0), 0) || 0;
+                  const spend = spendData?.[channelKey]?.spend || 0;
+
+                  const mmmCpa = mmmTotal > 0 ? spend / mmmTotal : 0;
+                  const attrCpa = attrTotal > 0 ? spend / attrTotal : 0;
+                  const mmmRoi = spend > 0 ? mmmTotal / spend : 0;
+                  const attrRoi = spend > 0 ? attrTotal / spend : 0;
+
+                  return {
+                    channel,
+                    spend,
+                    mmmVolume: mmmTotal,
+                    attrVolume: attrTotal,
+                    mmmCpa,
+                    attrCpa,
+                    mmmRoi,
+                    attrRoi,
+                  };
+                })
+                .filter((row) => {
+                  if (comparisonMetric === 'volume') return true;
+                  return row.spend > 0;
+                });
+
+              // Determine which fields to chart & display
+              const metricConfig = {
+                volume: {
+                  mmmKey: 'mmmVolume',
+                  attrKey: 'attrVolume',
+                  label: 'Sales / Conversions',
+                  format: (v) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0),
+                  prefix: '',
+                },
+                cpa: {
+                  mmmKey: 'mmmCpa',
+                  attrKey: 'attrCpa',
+                  label: 'Cost Per Acquisition',
+                  format: (v) => `$${v.toFixed(2)}`,
+                  prefix: '$',
+                },
+                roi: {
+                  mmmKey: 'mmmRoi',
+                  attrKey: 'attrRoi',
+                  label: 'Return on Investment',
+                  format: (v) => `${v.toFixed(2)}x`,
+                  prefix: '',
+                },
+              };
+
+              const cfg = metricConfig[comparisonMetric];
+
+              // CSV export
+              const exportCSV = () => {
+                const headers = ['Channel', 'Spend', 'MMM Volume', 'Attr Volume', 'MMM CPA', 'Attr CPA', 'MMM ROI', 'Attr ROI'];
+                const rows = comparisonData.map((r) =>
+                  [r.channel, r.spend.toFixed(2), r.mmmVolume.toFixed(0), r.attrVolume.toFixed(0), r.mmmCpa.toFixed(2), r.attrCpa.toFixed(2), r.mmmRoi.toFixed(2), r.attrRoi.toFixed(2)].join(',')
+                );
+                const csv = [headers.join(','), ...rows].join('\n');
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `comparison-${comparisonMetric}-${new Date().toISOString().slice(0, 10)}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              };
+
+              // Warn if CPA/ROI selected but no spend data
+              if ((comparisonMetric === 'cpa' || comparisonMetric === 'roi') && !spendData) {
+                return (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
+                    <p className="text-yellow-900 font-medium">Spend data required for {cfg.label} analysis</p>
+                    <p className="text-yellow-700 text-sm mt-2">Please upload your spend data CSV file to view {cfg.label} metrics.</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-6">
+                  {/* Summary cards */}
+                  <div className="grid grid-cols-3 gap-6">
+                    <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-6">
+                      <div className="text-sm font-medium text-blue-900 mb-2">MMM Total {cfg.label}</div>
+                      <div className="text-3xl font-bold text-blue-900 mb-1">
+                        {cfg.format(comparisonData.reduce((sum, r) => sum + r[cfg.mmmKey], 0) / (comparisonMetric === 'cpa' || comparisonMetric === 'roi' ? comparisonData.length || 1 : 1))}
+                      </div>
+                      <div className="text-sm text-blue-700">{comparisonMetric === 'volume' ? 'incremental conversions' : comparisonMetric === 'cpa' ? 'avg across channels' : 'avg across channels'}</div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-6">
+                      <div className="text-sm font-medium text-purple-900 mb-2">Attribution Total {cfg.label}</div>
+                      <div className="text-3xl font-bold text-purple-900 mb-1">
+                        {cfg.format(comparisonData.reduce((sum, r) => sum + r[cfg.attrKey], 0) / (comparisonMetric === 'cpa' || comparisonMetric === 'roi' ? comparisonData.length || 1 : 1))}
+                      </div>
+                      <div className="text-sm text-purple-700">{comparisonMetric === 'volume' ? 'attributed conversions' : comparisonMetric === 'cpa' ? 'avg across channels' : 'avg across channels'}</div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-orange-50 to-red-50 border border-orange-200 rounded-xl p-6">
+                      <div className="text-sm font-medium text-orange-900 mb-2">Variance</div>
+                      <div className="text-3xl font-bold text-orange-900 mb-1">
+                        {(() => {
+                          const mmmSum = comparisonData.reduce((s, r) => s + r[cfg.mmmKey], 0);
+                          const attrSum = comparisonData.reduce((s, r) => s + r[cfg.attrKey], 0);
+                          const diff = attrSum - mmmSum;
+                          const pct = mmmSum > 0 ? ((diff / mmmSum) * 100).toFixed(0) : 0;
+                          return `${diff > 0 ? '+' : ''}${pct}%`;
+                        })()}
+                      </div>
+                      <div className="text-sm text-orange-700">attribution vs MMM</div>
+                    </div>
+                  </div>
+
+                  {/* Grouped Bar Chart */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">{cfg.label} by Channel</h2>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <BarChart
+                        data={comparisonData}
+                        margin={{ top: 20, right: 30, left: 40, bottom: 60 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                        <XAxis
+                          dataKey="channel"
+                          stroke="#9CA3AF"
+                          tick={{ fill: '#6B7280', fontSize: 12 }}
+                          axisLine={{ stroke: '#E5E7EB' }}
+                          tickLine={false}
+                          angle={-30}
+                          textAnchor="end"
+                          height={80}
+                        />
+                        <YAxis
+                          stroke="#9CA3AF"
+                          tick={{ fill: '#6B7280', fontSize: 12 }}
+                          axisLine={{ stroke: '#E5E7EB' }}
+                          tickLine={false}
+                          tickFormatter={(value) =>
+                            comparisonMetric === 'volume'
+                              ? `${(value / 1000).toFixed(0)}k`
+                              : comparisonMetric === 'cpa'
+                              ? `$${value.toFixed(0)}`
+                              : `${value.toFixed(1)}x`
+                          }
+                        />
+                        <Tooltip
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div className="bg-white border border-gray-200 rounded-md p-3 shadow-lg text-xs">
+                                  <p className="font-semibold text-gray-900 mb-2">{label}</p>
+                                  {payload.map((entry, index) => (
+                                    <div key={index} className="flex items-center justify-between gap-4 mb-1">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.fill }} />
+                                        <span className="text-gray-700">{entry.name}</span>
+                                      </div>
+                                      <span className="font-medium text-gray-900">{cfg.format(entry.value)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                          cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
+                        />
+                        <Legend />
+                        <Bar dataKey={cfg.mmmKey} name="MMM" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey={cfg.attrKey} name="Attribution" fill="#EC4899" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Data Table */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-semibold text-gray-900">Detail Table</h2>
+                      <button
+                        onClick={exportCSV}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <Download className="w-4 h-4" />
+                        Export CSV
+                      </button>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Channel</th>
+                            {spendData && <th className="text-right py-3 px-4 font-semibold text-gray-700">Spend</th>}
+                            <th className="text-right py-3 px-4 font-semibold text-blue-700">MMM {comparisonMetric === 'volume' ? 'Volume' : comparisonMetric === 'cpa' ? 'CPA' : 'ROI'}</th>
+                            <th className="text-right py-3 px-4 font-semibold text-pink-700">Attr {comparisonMetric === 'volume' ? 'Volume' : comparisonMetric === 'cpa' ? 'CPA' : 'ROI'}</th>
+                            <th className="text-right py-3 px-4 font-semibold text-gray-700">Variance</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {comparisonData.map((row) => {
+                            const mmmVal = row[cfg.mmmKey];
+                            const attrVal = row[cfg.attrKey];
+                            const diff = attrVal - mmmVal;
+                            const pct = mmmVal > 0 ? ((diff / mmmVal) * 100).toFixed(0) : 0;
+                            return (
+                              <tr key={row.channel} className="border-b border-gray-100 hover:bg-gray-50">
+                                <td className="py-3 px-4 font-medium text-gray-900">{row.channel}</td>
+                                {spendData && <td className="py-3 px-4 text-right text-gray-600">${row.spend.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>}
+                                <td className="py-3 px-4 text-right font-medium text-blue-900">{cfg.format(mmmVal)}</td>
+                                <td className="py-3 px-4 text-right font-medium text-pink-900">{cfg.format(attrVal)}</td>
+                                <td className={`py-3 px-4 text-right font-semibold ${
+                                  diff > 0 ? 'text-orange-600' : diff < 0 ? 'text-green-600' : 'text-gray-500'
+                                }`}>
+                                  {diff > 0 ? '+' : ''}{pct}%
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 border-gray-300 bg-gray-50">
+                            <td className="py-3 px-4 font-bold text-gray-900">Total</td>
+                            {spendData && (
+                              <td className="py-3 px-4 text-right font-bold text-gray-900">
+                                ${comparisonData.reduce((s, r) => s + r.spend, 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                              </td>
+                            )}
+                            <td className="py-3 px-4 text-right font-bold text-blue-900">
+                              {comparisonMetric === 'volume'
+                                ? cfg.format(comparisonData.reduce((s, r) => s + r.mmmVolume, 0))
+                                : cfg.format(comparisonData.reduce((s, r) => s + r[cfg.mmmKey], 0) / (comparisonData.length || 1))
+                              }
+                            </td>
+                            <td className="py-3 px-4 text-right font-bold text-pink-900">
+                              {comparisonMetric === 'volume'
+                                ? cfg.format(comparisonData.reduce((s, r) => s + r.attrVolume, 0))
+                                : cfg.format(comparisonData.reduce((s, r) => s + r[cfg.attrKey], 0) / (comparisonData.length || 1))
+                              }
+                            </td>
+                            <td className={`py-3 px-4 text-right font-bold ${
+                              (() => {
+                                const ms = comparisonData.reduce((s, r) => s + r[cfg.mmmKey], 0);
+                                const as = comparisonData.reduce((s, r) => s + r[cfg.attrKey], 0);
+                                return (as - ms) > 0 ? 'text-orange-600' : 'text-green-600';
+                              })()
+                            }`}>
+                              {(() => {
+                                const ms = comparisonData.reduce((s, r) => s + r[cfg.mmmKey], 0);
+                                const as = comparisonData.reduce((s, r) => s + r[cfg.attrKey], 0);
+                                const d = as - ms;
+                                const p = ms > 0 ? ((d / ms) * 100).toFixed(0) : 0;
+                                return `${d > 0 ? '+' : ''}${p}%`;
+                              })()}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Legend */}
+                  <div className="flex items-center justify-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded bg-blue-500" />
+                      <span className="text-sm text-gray-700">MMM (True Lift)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded bg-pink-500" />
+                      <span className="text-sm text-gray-700">Attribution</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </>
         )}
       </div>
