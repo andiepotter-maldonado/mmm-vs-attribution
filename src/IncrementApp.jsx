@@ -770,14 +770,16 @@ const IncrementApp = () => {
 
                   const mmmCpa = mmmTotal > 0 ? spend / mmmTotal : 0;
                   const attrCpa = attrTotal > 0 ? spend / attrTotal : 0;
-                  const mmmRoi = spend > 0 ? mmmTotal / spend : 0;
-                  const attrRoi = spend > 0 ? attrTotal / spend : 0;
+                  const mmmRoi = spend > 0 ? ((mmmTotal - spend) / spend) * 100 : null;
+                  const attrRoi = spend > 0 && attrTotal > 0 ? ((attrTotal - spend) / spend) * 100 : null;
 
                   return {
                     channel,
                     spend,
                     mmmVolume: mmmTotal,
                     attrVolume: attrTotal,
+                    mmmRevenue: mmmTotal,
+                    attrRevenue: attrTotal,
                     mmmCpa,
                     attrCpa,
                     mmmRoi,
@@ -809,7 +811,7 @@ const IncrementApp = () => {
                   mmmKey: 'mmmRoi',
                   attrKey: 'attrRoi',
                   label: 'Return on Investment',
-                  format: (v) => `${v.toFixed(2)}x`,
+                  format: (v) => v === null ? 'N/A' : `${v.toFixed(1)}%`,
                   prefix: '',
                 },
               };
@@ -818,9 +820,9 @@ const IncrementApp = () => {
 
               // CSV export
               const exportCSV = () => {
-                const headers = ['Channel', 'Spend', 'MMM Volume', 'Attr Volume', 'MMM CPA', 'Attr CPA', 'MMM ROI', 'Attr ROI'];
+                const headers = ['Channel', 'Spend', 'MMM Volume', 'Attr Volume', 'MMM Revenue', 'Attr Revenue', 'MMM CPA', 'Attr CPA', 'MMM ROI (%)', 'Attr ROI (%)'];
                 const rows = comparisonData.map((r) =>
-                  [r.channel, r.spend.toFixed(2), r.mmmVolume.toFixed(0), r.attrVolume.toFixed(0), r.mmmCpa.toFixed(2), r.attrCpa.toFixed(2), r.mmmRoi.toFixed(2), r.attrRoi.toFixed(2)].join(',')
+                  [r.channel, r.spend.toFixed(2), r.mmmVolume.toFixed(0), r.attrVolume.toFixed(0), r.mmmRevenue.toFixed(2), r.attrRevenue.toFixed(2), r.mmmCpa.toFixed(2), r.attrCpa.toFixed(2), r.mmmRoi !== null ? r.mmmRoi.toFixed(1) : 'N/A', r.attrRoi !== null ? r.attrRoi.toFixed(1) : 'N/A'].join(',')
                 );
                 const csv = [headers.join(','), ...rows].join('\n');
                 const blob = new Blob([csv], { type: 'text/csv' });
@@ -906,7 +908,7 @@ const IncrementApp = () => {
                               ? `${(value / 1000).toFixed(0)}k`
                               : comparisonMetric === 'cpa'
                               ? `$${value.toFixed(0)}`
-                              : `${value.toFixed(1)}x`
+                              : `${value.toFixed(0)}%`
                           }
                         />
                         <Tooltip
@@ -956,6 +958,12 @@ const IncrementApp = () => {
                           <tr className="border-b border-gray-200">
                             <th className="text-left py-3 px-4 font-semibold text-gray-700">Channel</th>
                             {spendData && <th className="text-right py-3 px-4 font-semibold text-gray-700">Spend</th>}
+                            {comparisonMetric === 'roi' && (
+                              <>
+                                <th className="text-right py-3 px-4 font-semibold text-blue-700">MMM Revenue</th>
+                                <th className="text-right py-3 px-4 font-semibold text-pink-700">Attr Revenue</th>
+                              </>
+                            )}
                             <th className="text-right py-3 px-4 font-semibold text-blue-700">MMM {comparisonMetric === 'volume' ? 'Volume' : comparisonMetric === 'cpa' ? 'CPA' : 'ROI'}</th>
                             <th className="text-right py-3 px-4 font-semibold text-pink-700">Attr {comparisonMetric === 'volume' ? 'Volume' : comparisonMetric === 'cpa' ? 'CPA' : 'ROI'}</th>
                             <th className="text-right py-3 px-4 font-semibold text-gray-700">Variance</th>
@@ -965,18 +973,30 @@ const IncrementApp = () => {
                           {comparisonData.map((row) => {
                             const mmmVal = row[cfg.mmmKey];
                             const attrVal = row[cfg.attrKey];
-                            const diff = attrVal - mmmVal;
-                            const pct = mmmVal > 0 ? ((diff / mmmVal) * 100).toFixed(0) : 0;
+                            const mmmNum = mmmVal !== null ? mmmVal : 0;
+                            const attrNum = attrVal !== null ? attrVal : 0;
+                            const diff = attrNum - mmmNum;
+                            const pct = mmmNum !== 0 ? ((diff / Math.abs(mmmNum)) * 100).toFixed(0) : (attrVal !== null ? 'N/A' : 'N/A');
                             return (
                               <tr key={row.channel} className="border-b border-gray-100 hover:bg-gray-50">
                                 <td className="py-3 px-4 font-medium text-gray-900">{row.channel}</td>
                                 {spendData && <td className="py-3 px-4 text-right text-gray-600">${row.spend.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>}
+                                {comparisonMetric === 'roi' && (
+                                  <>
+                                    <td className="py-3 px-4 text-right text-blue-800">
+                                      ${row.mmmRevenue >= 1000 ? `${(row.mmmRevenue / 1000).toFixed(1)}k` : row.mmmRevenue.toFixed(0)}
+                                    </td>
+                                    <td className="py-3 px-4 text-right text-pink-800">
+                                      {row.attrRevenue > 0 ? `$${row.attrRevenue >= 1000 ? `${(row.attrRevenue / 1000).toFixed(1)}k` : row.attrRevenue.toFixed(0)}` : 'N/A'}
+                                    </td>
+                                  </>
+                                )}
                                 <td className="py-3 px-4 text-right font-medium text-blue-900">{cfg.format(mmmVal)}</td>
                                 <td className="py-3 px-4 text-right font-medium text-pink-900">{cfg.format(attrVal)}</td>
                                 <td className={`py-3 px-4 text-right font-semibold ${
-                                  diff > 0 ? 'text-orange-600' : diff < 0 ? 'text-green-600' : 'text-gray-500'
+                                  typeof pct === 'string' ? 'text-gray-400' : diff > 0 ? 'text-orange-600' : diff < 0 ? 'text-green-600' : 'text-gray-500'
                                 }`}>
-                                  {diff > 0 ? '+' : ''}{pct}%
+                                  {typeof pct === 'string' ? pct : `${diff > 0 ? '+' : ''}${pct}%`}
                                 </td>
                               </tr>
                             );
@@ -990,31 +1010,51 @@ const IncrementApp = () => {
                                 ${comparisonData.reduce((s, r) => s + r.spend, 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
                               </td>
                             )}
+                            {comparisonMetric === 'roi' && (
+                              <>
+                                <td className="py-3 px-4 text-right font-bold text-blue-900">
+                                  ${(comparisonData.reduce((s, r) => s + r.mmmRevenue, 0) / 1000).toFixed(1)}k
+                                </td>
+                                <td className="py-3 px-4 text-right font-bold text-pink-900">
+                                  ${(comparisonData.reduce((s, r) => s + r.attrRevenue, 0) / 1000).toFixed(1)}k
+                                </td>
+                              </>
+                            )}
                             <td className="py-3 px-4 text-right font-bold text-blue-900">
-                              {comparisonMetric === 'volume'
-                                ? cfg.format(comparisonData.reduce((s, r) => s + r.mmmVolume, 0))
-                                : cfg.format(comparisonData.reduce((s, r) => s + r[cfg.mmmKey], 0) / (comparisonData.length || 1))
-                              }
+                              {(() => {
+                                if (comparisonMetric === 'volume') return cfg.format(comparisonData.reduce((s, r) => s + r.mmmVolume, 0));
+                                if (comparisonMetric === 'roi') {
+                                  const totalRev = comparisonData.reduce((s, r) => s + r.mmmRevenue, 0);
+                                  const totalSpend = comparisonData.reduce((s, r) => s + r.spend, 0);
+                                  return totalSpend > 0 ? `${(((totalRev - totalSpend) / totalSpend) * 100).toFixed(1)}%` : 'N/A';
+                                }
+                                return cfg.format(comparisonData.reduce((s, r) => s + r[cfg.mmmKey], 0) / (comparisonData.length || 1));
+                              })()}
                             </td>
                             <td className="py-3 px-4 text-right font-bold text-pink-900">
-                              {comparisonMetric === 'volume'
-                                ? cfg.format(comparisonData.reduce((s, r) => s + r.attrVolume, 0))
-                                : cfg.format(comparisonData.reduce((s, r) => s + r[cfg.attrKey], 0) / (comparisonData.length || 1))
-                              }
+                              {(() => {
+                                if (comparisonMetric === 'volume') return cfg.format(comparisonData.reduce((s, r) => s + r.attrVolume, 0));
+                                if (comparisonMetric === 'roi') {
+                                  const totalRev = comparisonData.reduce((s, r) => s + r.attrRevenue, 0);
+                                  const totalSpend = comparisonData.reduce((s, r) => s + r.spend, 0);
+                                  return totalSpend > 0 && totalRev > 0 ? `${(((totalRev - totalSpend) / totalSpend) * 100).toFixed(1)}%` : 'N/A';
+                                }
+                                return cfg.format(comparisonData.reduce((s, r) => s + r[cfg.attrKey], 0) / (comparisonData.length || 1));
+                              })()}
                             </td>
                             <td className={`py-3 px-4 text-right font-bold ${
                               (() => {
-                                const ms = comparisonData.reduce((s, r) => s + r[cfg.mmmKey], 0);
-                                const as = comparisonData.reduce((s, r) => s + r[cfg.attrKey], 0);
+                                const ms = comparisonData.reduce((s, r) => s + (r[cfg.mmmKey] || 0), 0);
+                                const as = comparisonData.reduce((s, r) => s + (r[cfg.attrKey] || 0), 0);
                                 return (as - ms) > 0 ? 'text-orange-600' : 'text-green-600';
                               })()
                             }`}>
                               {(() => {
-                                const ms = comparisonData.reduce((s, r) => s + r[cfg.mmmKey], 0);
-                                const as = comparisonData.reduce((s, r) => s + r[cfg.attrKey], 0);
+                                const ms = comparisonData.reduce((s, r) => s + (r[cfg.mmmKey] || 0), 0);
+                                const as = comparisonData.reduce((s, r) => s + (r[cfg.attrKey] || 0), 0);
                                 const d = as - ms;
-                                const p = ms > 0 ? ((d / ms) * 100).toFixed(0) : 0;
-                                return `${d > 0 ? '+' : ''}${p}%`;
+                                const p = ms !== 0 ? ((d / Math.abs(ms)) * 100).toFixed(0) : 'N/A';
+                                return typeof p === 'string' ? p : `${d > 0 ? '+' : ''}${p}%`;
                               })()}
                             </td>
                           </tr>
